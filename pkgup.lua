@@ -116,6 +116,22 @@ local function update_pkgbuild(
    end
 end
 
+local function regenerate_srcinfo()
+   local handle = io.popen("makepkg --printsrcinfo 2>&1")
+   if not handle then
+      die("Failed to run makepkg --printsrcinfo")
+   end
+   local output = handle:read("*a")
+   local success = handle:close()
+   if not success then
+      die("makepkg --printsrcinfo failed:\n" .. output)
+   end
+   local ok, write_err = write_file(".SRCINFO", output)
+   if not ok then
+      die("Failed to write .SRCINFO: " .. (write_err or ""))
+   end
+end
+
 local function get_current_version(pkgbuild)
    local version = pkgbuild:match("\npkgver=([^\n]+)")
    if not version then
@@ -166,7 +182,6 @@ local function main()
       return
    end
 
-
    local source_filenames = extract_source_filenames(pkgbuild, version)
    if not next(source_filenames) then
       die("No sources found in PKGBUILD")
@@ -183,7 +198,8 @@ local function main()
    end
 
    update_pkgbuild(pkgbuild, version, checksums_by_arch)
-   print("Updated PKGBUILD to version " .. version)
+   regenerate_srcinfo()
+   print("Updated PKGBUILD and .SRCINFO to version " .. version)
 end
 
 main()
